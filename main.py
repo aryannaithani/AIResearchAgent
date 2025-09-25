@@ -1,6 +1,8 @@
 import os
 import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 from langchain.agents import initialize_agent, Tool
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -60,7 +62,7 @@ def news_search(query: str, language: str = "en", page_size: int = 5) -> str:
 
 def scrape_webpage(url: str) -> str:
     try:
-        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -107,15 +109,41 @@ def serper_search(query: str) -> str:
     return "\n".join(results) if results else "No results found."
 
 
+def generate_pdf(text: str, file_path: str = "report.pdf") -> str:
+    try:
+        # If no path is given, fallback
+        if not file_path.strip():
+            file_path = "output.pdf"
+
+        c = canvas.Canvas(file_path, pagesize=letter)
+        width, height = letter
+        c.setFont("Helvetica", 12)
+
+        y = height - 72
+        for line in text.split("\n"):
+            if y < 72:  # new page
+                c.showPage()
+                c.setFont("Helvetica", 12)
+                y = height - 72
+            c.drawString(72, y, line)
+            y -= 20
+
+        c.save()
+        return os.path.abspath(file_path)
+    except Exception as e:
+        return f"Error generating PDF: {str(e)}"
+
+
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 tools = [Tool(name="Google Search", func=serper_search, description="Search the web for up-to-date information"),
          Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search"),
          Tool(name="News Search", func=news_search, description="Search for recent news articles using NewsAPI."),
-         Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv.")]
+         Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
+         Tool(name="Generate PDF Report", func=generate_pdf, description="Generate a comprehensive PDF report.")]
 
 agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True)
 
-query = "Summarize the latest advancements in Quantum chip manufacturing (2025)."
+query = "Give me a PDF report after summarizing the latest advancements in Quantum chip manufacturing (2025)."
 
 response = agent.run(query)
