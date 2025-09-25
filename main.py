@@ -1,6 +1,5 @@
 import os
 import urllib.parse
-
 import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import initialize_agent, Tool
@@ -16,7 +15,7 @@ load_dotenv()
 def arxiv_search(query: str) -> str:
     try:
         query = urllib.parse.quote(query)
-        url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=5"
+        url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=10"
         feed = feedparser.parse(url)
 
         if not feed.entries:
@@ -104,7 +103,7 @@ def serper_search(query: str) -> str:
     data = resp.json()
 
     results = []
-    for item in data.get("organic", [])[:5]:
+    for item in data.get("organic", [])[:10]:
         title = item.get("title")
         link = item.get("link")
         snippet = item.get("snippet")
@@ -131,10 +130,10 @@ tools = [Tool(name="Google Search", func=serper_search, description="Search the 
          Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search, it accepts one URL at a time."),
          Tool(name="News Search", func=news_search, description="Search for recent news articles using NewsAPI."),
          Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
-         Tool(name="Generate PDF Report", func=generate_pdf, description="Takes HTML format as input and generates a comprehensive PDF report.")]
+         Tool(name="Generate PDF Report", func=generate_pdf, description="Takes only HTML format as input and generates a comprehensive PDF report. only pass HTML formatted content and nothing else, do not pass directions for how the pdf should be, pass the HTML for the PDF")]
 
 agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True)
 
-query = "Give me a PDF report after summarizing the latest advancements in Quantum chip manufacturing (2025)."
+query = "Give me a PDF report focusing on Quantum chip manufacturing (2025). I want a very comprehensive report of atleast 5 pages."
 
 response = agent.run(query)
