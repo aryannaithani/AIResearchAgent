@@ -1,20 +1,22 @@
 import os
+import urllib.parse
+
 import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 from langchain.agents import initialize_agent, Tool
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import feedparser
+from weasyprint import HTML
 
 
 load_dotenv()
 
 
-def arxiv_search(query: str, max_results: int = 5) -> str:
+def arxiv_search(query: str) -> str:
     try:
-        url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results={max_results}"
+        query = urllib.parse.quote(query)
+        url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=5"
         feed = feedparser.parse(url)
 
         if not feed.entries:
@@ -34,13 +36,14 @@ def arxiv_search(query: str, max_results: int = 5) -> str:
         return f"Error fetching arXiv papers: {e}"
 
 
-def news_search(query: str, language: str = "en", page_size: int = 5) -> str:
+def news_search(query: str) -> str:
+    query = query.strip().replace('"', '')
     try:
         url = "https://newsapi.org/v2/everything"
         params = {
             "q": query,
-            "language": language,
-            "pageSize": page_size,
+            "language": "en",
+            "pageSize": 5,
             "apiKey": os.getenv("NEWS_API_KEY")
         }
         response = requests.get(url, params=params, timeout=10)
@@ -62,6 +65,7 @@ def news_search(query: str, language: str = "en", page_size: int = 5) -> str:
 
 def scrape_webpage(url: str) -> str:
     try:
+        url = url.strip()
         response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
         response.raise_for_status()
 
@@ -109,38 +113,25 @@ def serper_search(query: str) -> str:
     return "\n".join(results) if results else "No results found."
 
 
-def generate_pdf(text: str, file_path: str = "report.pdf") -> str:
+def generate_pdf(html_content: str) -> str:
     try:
-        # If no path is given, fallback
-        if not file_path.strip():
-            file_path = "output.pdf"
+        file_path = "output.pdf"
 
-        c = canvas.Canvas(file_path, pagesize=letter)
-        width, height = letter
-        c.setFont("Helvetica", 12)
+        # Convert HTML to PDF
+        HTML(string=html_content).write_pdf(file_path)
 
-        y = height - 72
-        for line in text.split("\n"):
-            if y < 72:  # new page
-                c.showPage()
-                c.setFont("Helvetica", 12)
-                y = height - 72
-            c.drawString(72, y, line)
-            y -= 20
-
-        c.save()
         return os.path.abspath(file_path)
     except Exception as e:
-        return f"Error generating PDF: {str(e)}"
+        return f"Error generating PDF: {e}"
 
 
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 tools = [Tool(name="Google Search", func=serper_search, description="Search the web for up-to-date information"),
-         Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search"),
+         Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search, it accepts one URL at a time."),
          Tool(name="News Search", func=news_search, description="Search for recent news articles using NewsAPI."),
          Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
-         Tool(name="Generate PDF Report", func=generate_pdf, description="Generate a comprehensive PDF report.")]
+         Tool(name="Generate PDF Report", func=generate_pdf, description="Takes HTML format as input and generates a comprehensive PDF report.")]
 
 agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True)
 
