@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flask AI Research Assistant</title>
+    <title>AI Research Assistant</title>
     <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
     <div class="chat-header">
-        <h1>🤖 AI Research Assistant</h1>
-        <p>Your intelligent companion for research, analysis, and information gathering</p>
+        <div class="status-dot"></div>
+        <h1>AI Research Assistant</h1>
+        <p>Research • Analysis • Reports</p>
     </div>
 
     <div class="chat-container">
         <div class="messages-container" id="messages">
             <div class="message bot">
-                <div>👋 Hello! I'm your AI research assistant. I can help you with research, data analysis, web scraping, and compiling comprehensive reports. What would you like to explore today?</div>
+                <div>Hello! I'm your AI research assistant. I can help you with research, data analysis, web scraping, and comprehensive reporting. What would you like to explore today?</div>
                 <div class="message-time" id="initial-time"></div>
             </div>
         </div>
@@ -42,8 +43,10 @@
                 placeholder="Ask me to research anything, analyze data, or compile information..."
                 rows="1"
             ></textarea>
-            <button class="send-button" id="sendButton" title="Send message">
-                ➤
+            <button class="send-button" id="sendButton" title="Send message" aria-label="Send message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M7 11L12 6L17 11M12 18V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(90 12 12)"/>
+                </svg>
             </button>
         </div>
     </div>
