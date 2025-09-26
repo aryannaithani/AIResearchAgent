@@ -77,8 +77,18 @@ const messagesContainer = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message user';
             messageDiv.innerHTML = `
-                <div>${text}</div>
-                <div class="message-time">${timestamp}</div>
+                <div class="message-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <div class="message-text">${text}</div>
+                    </div>
+                    <div class="message-time">${timestamp}</div>
+                </div>
             `;
             messagesContainer.appendChild(messageDiv);
             lastMessageCount++;
@@ -86,27 +96,40 @@ const messagesContainer = document.getElementById('messages');
         }
 
         function addBotMessageToChat(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message bot';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
 
-    let content = message.text;
-    if (content.startsWith('http')) {
-        content = `<a href="${content}" target="_blank" class="download-button">
-            <svg class="download-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7,10 12,15 17,10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download Report
-        </a>`;
-    }
+            let content = message.text;
+            if (content.startsWith('http')) {
+                content = `<a href="${content}" target="_blank" rel="noopener noreferrer">
+                    Download Report
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline; margin-left: 4px;">
+                        <path d="M7 7h10v10"/>
+                        <path d="M7 17 17 7"/>
+                    </svg>
+                </a>`;
+            }
 
-    messageDiv.innerHTML = `
-        <div>${content}</div>
-        <div class="message-time">${message.timestamp}</div>
-    `;
-    messagesContainer.appendChild(messageDiv);
-}
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 8V4H8"/>
+                        <rect width="16" height="12" x="4" y="8" rx="2"/>
+                        <path d="M2 14h2"/>
+                        <path d="M20 14h2"/>
+                        <path d="M15 13v2"/>
+                        <path d="M9 13v2"/>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <div class="message-text">${content}</div>
+                    </div>
+                    <div class="message-time">${message.timestamp}</div>
+                </div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+        }
 
         function showAIStatus() {
             aiStatus.classList.add('active');
@@ -197,7 +220,8 @@ const messagesContainer = document.getElementById('messages');
 
         function scrollToBottom() {
             requestAnimationFrame(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                const chatContainer = document.querySelector('.chat-container');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             });
         }
 
@@ -207,4 +231,4 @@ const messagesContainer = document.getElementById('messages');
         });
 
         // Periodic message check for multi-user scenarios
-        setInterval(loadMessages, 3000);
+        //setInterval(loadMessages, 3000);
