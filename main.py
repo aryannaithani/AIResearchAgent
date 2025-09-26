@@ -2,7 +2,7 @@ import os
 import urllib.parse
 import requests
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent, Tool
+from langchain.agents import initialize_agent, Tool, AgentType
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import feedparser
@@ -128,13 +128,31 @@ def generate_pdf(html_content: str) -> str:
 
 
 def AIResearch(query):
-    query = query + " you are a research assistant, you take in the user's query and search and scrape content using your given tools then format in into HTML and finally generate a PDF of that content and return it to the user."
+
+    query = query + """
+    You are a research assistant.
+    Your job is to search/scrape using tools, format the findings into HTML,
+    then ALWAYS call the tool `Generate PDF Report`.
+    Never give a final answer in plain text.
+    Only return the final PDF link generated.
+    """
+
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
+
     tools = [Tool(name="Google Search", func=serper_search, description="Search the web for up-to-date information"),
          Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search, it accepts one URL at a time."),
          Tool(name="News Search", func=news_search, description="Search for recent news articles using NewsAPI."),
          Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
          Tool(name="Generate PDF Report", func=generate_pdf, description="Takes only HTML format as input and generates a comprehensive PDF report. only pass HTML formatted content and nothing else, do not pass directions for how the pdf should be, pass the HTML for the PDF")]
-    agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True)
+
+    agent = initialize_agent(tools=tools,
+                             llm=llm,
+                             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                             verbose=True,
+                             handle_parsing_errors=True)
+
     response = agent.invoke({"input": query})
-    return response["output"]
+
+    if isinstance(response, dict):
+        return response.get("output", response.get("output_text", str(response)))
+    return str(response)
