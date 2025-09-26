@@ -1,158 +1,94 @@
-import os
-import urllib.parse
-import requests
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent, Tool, AgentType
-from dotenv import load_dotenv
-from bs4 import BeautifulSoup
-import feedparser
-from weasyprint import HTML
-from filestack import Client
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime
+from researcher import AIResearch
+import threading
+import time
+import random
+
+app = Flask(__name__)
+
+messages = []
+current_status = {"message": "", "active": False}
+
+# Dynamic status messages for the AI research process
+status_messages = [
+    "Scraping webpages...",
+    "Looking up news articles...",
+    "Going through research papers...",
+    "Analyzing data sources...",
+    "Cross-referencing information...",
+    "Fact-checking details...",
+    "Compiling research findings...",
+    "Organizing information...",
+    "Generating comprehensive response...",
+    "Finalizing research report...",
+    "Compiling a clean PDF..."
+]
 
 
-load_dotenv()
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 
-def arxiv_search(query: str) -> str:
-    try:
-        query = urllib.parse.quote(query)
-        url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start=0&max_results=10"
-        feed = feedparser.parse(url)
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    data = request.get_json()
+    message_text = data.get('message', '').strip()
 
-        if not feed.entries:
-            return "No papers found on arXiv."
-
-        results = []
-        for entry in feed.entries:
-            title = entry.title
-            summary = entry.summary[:500].replace("\n", " ") + "..."
-            authors = ", ".join(author.name for author in entry.authors)
-            link = entry.link
-            results.append(
-                f"📖 {title}\n👨‍🔬 Authors: {authors}\n📝 {summary}\n🔗 {link}\n"
-            )
-        return "\n".join(results)
-    except Exception as e:
-        return f"Error fetching arXiv papers: {e}"
-
-
-def news_search(query: str) -> str:
-    query = query.strip().replace('"', '')
-    try:
-        url = "https://newsapi.org/v2/everything"
-        params = {
-            "q": query,
-            "language": "en",
-            "pageSize": 5,
-            "apiKey": os.getenv("NEWS_API_KEY")
+    if message_text:
+        # Add user message immediately
+        user_message = {
+            'id': len(messages),
+            'text': message_text,
+            'sender': 'user',
+            'timestamp': datetime.now().strftime('%H:%M')
         }
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+        messages.append(user_message)
 
-        if "articles" not in data or not data["articles"]:
-            return "No news articles found."
+        # Start the AI research process in a separate thread
+        def process_ai_response():
+            current_status["active"] = True
 
-        results = []
-        for article in data["articles"]:
-            results.append(
-                f"📰 {article['title']} ({article['source']['name']})\n{article['url']}\n"
-            )
-        return "\n".join(results)
-    except Exception as e:
-        return f"Error fetching news: {e}"
+            # Simulate research process with status updates
+            for i in range(3):  # Show 3 different status messages
+                current_status["message"] = random.choice(status_messages)
+                time.sleep(random.uniform(1, 2.5))  # Random delay between 1-2.5 seconds
 
+            # Get the actual AI response
+            current_status["message"] = "Finalizing response..."
+            bot_response = AIResearch(message_text)
 
-def scrape_webpage(url: str) -> str:
-    try:
-        url = url.strip()
-        response = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-        response.raise_for_status()
+            # Add bot message
+            bot_message = {
+                'id': len(messages),
+                'text': bot_response,
+                'sender': 'bot',
+                'timestamp': datetime.now().strftime('%H:%M')
+            }
+            messages.append(bot_message)
 
-        soup = BeautifulSoup(response.text, "html.parser")
+            current_status["active"] = False
+            current_status["message"] = ""
 
-        # Try common containers first
-        article = soup.find("article")
-        if not article:
-            article = soup.find("main") or soup.find("section")
+        thread = threading.Thread(target=process_ai_response)
+        thread.daemon = True
+        thread.start()
 
-        if article:
-            text = article.get_text(separator="\n", strip=True)
-        else:
-            # fallback: clean whole page
-            for tag in soup(["script", "style", "noscript", "header", "footer", "nav", "aside"]):
-                tag.extract()
-            text = soup.get_text(separator="\n", strip=True)
+        return jsonify({'status': 'success', 'message_id': user_message['id']})
 
-        # Clean up newlines
-        text = "\n".join([line for line in text.splitlines() if line.strip()])
-
-        return text[:8000]  # limit size
-    except Exception as e:
-        return f"Error scraping {url}: {e}"
+    return jsonify({'status': 'error', 'message': 'Empty message'})
 
 
-def serper_search(query: str) -> str:
-    url = "https://google.serper.dev/search"
-    headers = {
-        "X-API-KEY": os.getenv("SERPER_API_KEY"),
-        "Content-Type": "application/json"
-    }
-    payload = {"q": query}
-
-    resp = requests.post(url, headers=headers, json=payload)
-    data = resp.json()
-
-    results = []
-    for item in data.get("organic", [])[:10]:
-        title = item.get("title")
-        link = item.get("link")
-        snippet = item.get("snippet")
-        results.append(f"{title}\n{snippet}\nSource: {link}\n")
-
-    return "\n".join(results) if results else "No results found."
+@app.route('/get_messages')
+def get_messages():
+    return jsonify(messages)
 
 
-def generate_pdf(html_content: str) -> str:
-    try:
-        file_path = "output.pdf"
-
-        # Convert HTML to PDF
-        HTML(string=html_content).write_pdf(file_path)
-        client  = Client(os.getenv("FILESTACK_API_KEY"))
-        link = client.upload(filepath=file_path)
-
-        return link.url
-    except Exception as e:
-        return f"Error generating PDF: {e}"
+@app.route('/get_status')
+def get_status():
+    return jsonify(current_status)
 
 
-def AIResearch(query):
-
-    query = query + """
-    You are a research assistant.
-    Your job is to search/scrape using tools, format the findings into HTML,
-    then ALWAYS call the tool `Generate PDF Report`.
-    Never give a final answer in plain text.
-    Only return the final PDF link generated.
-    """
-
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
-
-    tools = [Tool(name="Google Search", func=serper_search, description="Search the web for up-to-date information"),
-         Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search, it accepts one URL at a time."),
-         Tool(name="News Search", func=news_search, description="Search for recent news articles using NewsAPI."),
-         Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
-         Tool(name="Generate PDF Report", func=generate_pdf, description="Takes only HTML format as input and generates a comprehensive PDF report. only pass HTML formatted content and nothing else, do not pass directions for how the pdf should be, pass the HTML for the PDF")]
-
-    agent = initialize_agent(tools=tools,
-                             llm=llm,
-                             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-                             verbose=True,
-                             handle_parsing_errors=True)
-
-    response = agent.invoke({"input": query})
-
-    if isinstance(response, dict):
-        return response.get("output", response.get("output_text", str(response)))
-    return str(response)
+if __name__ == '__main__':
+    app.run(debug=True, threaded=True)
