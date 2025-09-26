@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import feedparser
 from weasyprint import HTML
+from filestack import Client
 
 
 load_dotenv()
@@ -118,13 +119,15 @@ def generate_pdf(html_content: str) -> str:
 
         # Convert HTML to PDF
         HTML(string=html_content).write_pdf(file_path)
+        client  = Client(os.getenv("FILESTACK_API_KEY"))
+        link = client.upload(filepath=file_path)
 
-        return os.path.abspath(file_path)
+        return link.url
     except Exception as e:
         return f"Error generating PDF: {e}"
 
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 tools = [Tool(name="Google Search", func=serper_search, description="Search the web for up-to-date information"),
          Tool(name="Scrape Webpage", func=scrape_webpage, description="Scrape detailed text information from the URLs returned by the Google search, it accepts one URL at a time."),
@@ -132,8 +135,10 @@ tools = [Tool(name="Google Search", func=serper_search, description="Search the 
          Tool(name="Arxiv Search", func=arxiv_search, description="Search for academic papers on arXiv."),
          Tool(name="Generate PDF Report", func=generate_pdf, description="Takes only HTML format as input and generates a comprehensive PDF report. only pass HTML formatted content and nothing else, do not pass directions for how the pdf should be, pass the HTML for the PDF")]
 
-agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True)
+agent = initialize_agent(tools=tools, llm=llm, agent="zero-shot-react-description", verbose=True, return_intermediate_steps=True)
 
 query = "Give me a PDF report focusing on Quantum chip manufacturing (2025). I want a very comprehensive report of atleast 5 pages."
 
-response = agent.run(query)
+response = agent.invoke({"input": query})
+print(response["intermediate_steps"])
+print(response["output"])
