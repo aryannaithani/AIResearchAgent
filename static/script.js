@@ -1,38 +1,114 @@
-const messagesContainer = document.getElementById('messages');
+// DOM elements
+        const messagesContainer = document.getElementById('messages');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
         const aiStatus = document.getElementById('aiStatus');
         const statusText = document.getElementById('statusText');
         const typingIndicator = document.getElementById('typingIndicator');
+        
+        // Landing page elements
+        const landingContainer = document.getElementById('landingContainer');
+        const chatHeader = document.getElementById('chatHeader');
+        const chatContainer = document.getElementById('chatContainer');
+        const startButton = document.getElementById('startButton');
 
-        // Set initial timestamp
-        document.getElementById('initial-time').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
+        // Chat state
+        let isLandingVisible = true;
         let lastMessageCount = 0;
         let isWaitingForResponse = false;
 
-        // Auto-resize textarea
-        messageInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-
-            // Add pulse effect when typing
-            if (this.value.trim()) {
-                sendButton.classList.add('pulse');
-            } else {
-                sendButton.classList.remove('pulse');
+        // Initialize app
+        function init() {
+            // Set initial timestamp
+            const initialTimeElement = document.getElementById('initial-time');
+            if (initialTimeElement) {
+                initialTimeElement.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             }
-        });
-
-        // Send message on Enter (but allow Shift+Enter for new line)
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+            
+            // Landing page event listeners
+            if (startButton) {
+                startButton.addEventListener('click', transitionToChat);
             }
-        });
+            
+            // Chat event listeners (only add if not on landing)
+            if (sendButton && messageInput) {
+                setupChatListeners();
+            }
+        }
 
-        sendButton.addEventListener('click', sendMessage);
+        // Transition from landing to chat
+        function transitionToChat() {
+            if (!isLandingVisible) return;
+            
+            isLandingVisible = false;
+            
+            // Add fade-out class to landing
+            landingContainer.classList.add('fade-out');
+            
+            // After animation completes, switch to chat
+            setTimeout(() => {
+                landingContainer.style.display = 'none';
+                chatHeader.style.display = 'flex';
+                chatContainer.style.display = 'flex';
+                
+                // Add fade-in animation to chat
+                chatHeader.style.opacity = '0';
+                chatContainer.style.opacity = '0';
+                chatHeader.style.transform = 'translateY(20px)';
+                chatContainer.style.transform = 'translateY(20px)';
+                
+                // Animate in
+                setTimeout(() => {
+                    chatHeader.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+                    chatContainer.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+                    chatHeader.style.opacity = '1';
+                    chatContainer.style.opacity = '1';
+                    chatHeader.style.transform = 'translateY(0)';
+                    chatContainer.style.transform = 'translateY(0)';
+                    
+                    // Setup chat functionality after transition
+                    setupChatListeners();
+                    
+                    // Focus input after transition
+                    setTimeout(() => {
+                        if (messageInput) {
+                            messageInput.focus();
+                        }
+                    }, 300);
+                }, 50);
+            }, 800);
+        }
+
+        // Setup chat event listeners
+        function setupChatListeners() {
+            if (!messageInput || !sendButton) return;
+
+            // Auto-resize textarea
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+
+                // Add pulse effect when typing
+                if (this.value.trim()) {
+                    sendButton.classList.add('pulse');
+                } else {
+                    sendButton.classList.remove('pulse');
+                }
+            });
+
+            // Send message on Enter (but allow Shift+Enter for new line)
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            sendButton.addEventListener('click', sendMessage);
+        }
+
+        // Initialize when page loads
+        init();
 
         async function sendMessage() {
             const message = messageInput.value.trim();

@@ -7,13 +7,75 @@
     <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
-    <div class="chat-header">
+    <!-- Landing Page -->
+    <div class="landing-container" id="landingContainer">
+        <div class="landing-content">
+            <div class="landing-header">
+                <div class="landing-logo">
+                    <div class="logo-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h1>AI Research Assistant</h1>
+                </div>
+                <p class="landing-subtitle">Your intelligent companion for research, analysis, and comprehensive reporting</p>
+            </div>
+
+            <div class="landing-features">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 16V8A2 2 0 0019 6H5A2 2 0 003 8V16A2 2 0 005 18H19A2 2 0 0021 16Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M7 2V6M17 2V6M7 14H17M7 10H17" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3>Deep Research</h3>
+                    <p>Comprehensive data collection and analysis from multiple sources</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 3V21L7.5 18L12 21L16.5 18L21 21V3L16.5 6L12 3L7.5 6L3 3Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 12H16M8 8H16" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3>Smart Reports</h3>
+                    <p>Generate detailed, structured reports with actionable insights</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3>Instant Analysis</h3>
+                    <p>Real-time data processing and intelligent pattern recognition</p>
+                </div>
+            </div>
+
+            <div class="landing-cta">
+                <button class="start-button" id="startButton">
+                    <span>Start Research</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <p class="landing-hint">Ask me anything about research, data analysis, or reports</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Interface -->
+    <div class="chat-header" id="chatHeader" style="display: none;">
         <div class="status-dot"></div>
         <h1>AI Research Assistant</h1>
         <p>Research • Analysis • Reports</p>
     </div>
 
-    <div class="chat-container">
+    <div class="chat-container" id="chatContainer" style="display: none;">
         <div class="messages-container" id="messages">
             <div class="message bot">
                 <div>Hello! I'm your AI research assistant. I can help you with research, data analysis, web scraping, and comprehensive reporting. What would you like to explore today?</div>
