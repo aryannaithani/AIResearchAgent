@@ -231,4 +231,4 @@ const messagesContainer = document.getElementById('messages');
         });
 
         // Periodic message check for multi-user scenarios
-        setInterval(loadMessages, 3000);
+        //setInterval(loadMessages, 3000);
