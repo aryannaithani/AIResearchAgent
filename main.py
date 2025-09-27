@@ -1,29 +1,32 @@
-from flask import Flask, render_template, request, jsonify
+import os
+
+from flask import Flask, render_template, request, jsonify, session
 from datetime import datetime
 from researcher import AIResearch
 import threading
-import time
-import random
+import uuid
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY")
 
-messages = []
-current_status = {"message": "", "active": False}
+user_sessions = {}
 
-# Dynamic status messages for the AI research process
-status_messages = [
-    "Scraping webpages...",
-    "Looking up news articles...",
-    "Going through research papers...",
-    "Analyzing data sources...",
-    "Cross-referencing information...",
-    "Fact-checking details...",
-    "Compiling research findings...",
-    "Organizing information...",
-    "Generating comprehensive response...",
-    "Finalizing research report...",
-    "Compiling a clean PDF..."
-]
+def get_session_id():
+    if "sid" not in session:
+        session["sid"] = str(uuid.uuid4())
+    return session["sid"]
+
+def get_user_data():
+    sid = get_session_id()
+    if sid not in user_sessions:
+        user_sessions[sid] = {
+            "messages": [],
+            "status": {
+                "active": False,
+                "message": ""
+            }
+        }
+    return user_sessions[sid]
 
 
 @app.route('/')
@@ -33,61 +36,55 @@ def index():
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
+    user_data = get_user_data()
     data = request.get_json()
-    message_text = data.get('message', '').strip()
+    message_text = data.get("message", "").strip()
 
     if message_text:
-        # Add user message immediately
         user_message = {
-            'id': len(messages),
-            'text': message_text,
-            'sender': 'user',
-            'timestamp': datetime.now().strftime('%H:%M')
+            "id": len(user_data["messages"]),
+            "text": message_text,
+            "sender": "user",
+            "timestamp": datetime.now().strftime("%H:%M")
         }
-        messages.append(user_message)
+        user_data["messages"].append(user_message)
 
-        # Start the AI research process in a separate thread
-        def process_ai_response():
-            current_status["active"] = True
+        def process_ai_response(sid, query):
+            user_data = user_sessions[sid]
+            user_data["status"]["active"] = True
+            user_data["status"]["message"] = "Thinking..."
 
-            # Simulate research process with status updates
-            for i in range(3):  # Show 3 different status messages
-                current_status["message"] = random.choice(status_messages)
-                time.sleep(random.uniform(1, 2.5))  # Random delay between 1-2.5 seconds
+            bot_response = AIResearch(query)
 
-            # Get the actual AI response
-            current_status["message"] = "Finalizing response..."
-            bot_response = AIResearch(message_text)
-
-            # Add bot message
             bot_message = {
-                'id': len(messages),
-                'text': bot_response,
-                'sender': 'bot',
-                'timestamp': datetime.now().strftime('%H:%M')
+                "id": len(user_data["messages"]),
+                "text": bot_response,
+                "sender": "bot",
+                "timestamp": datetime.now().strftime("%H:%M")
             }
-            messages.append(bot_message)
+            user_data["messages"].append(bot_message)
 
-            current_status["active"] = False
-            current_status["message"] = ""
+            user_data["status"]["active"] = False
+            user_data["status"]["message"] = ""
 
-        thread = threading.Thread(target=process_ai_response)
-        thread.daemon = True
+        sid = get_session_id()
+        thread = threading.Thread(target=process_ai_response, args=(sid, message_text))
         thread.start()
 
-        return jsonify({'status': 'success', 'message_id': user_message['id']})
+        return jsonify({"status": "success", "message_id": user_message["id"]})
 
-    return jsonify({'status': 'error', 'message': 'Empty message'})
-
+    return jsonify({"status": "error", "message": "Empty message"})
 
 @app.route('/get_messages')
 def get_messages():
-    return jsonify(messages)
+    user_data = get_user_data()
+    return jsonify(user_data["messages"])
 
 
 @app.route('/get_status')
 def get_status():
-    return jsonify(current_status)
+    user_data = get_user_data()
+    return jsonify(user_data["status"])
 
 
 if __name__ == '__main__':
